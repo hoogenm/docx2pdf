@@ -1,4 +1,5 @@
 # docx2pdf
+MODIFIED TO CONVERT .doc INSTEAD OF .docx
 
 [![PyPI](https://img.shields.io/pypi/v/docx2pdf)](https://pypi.org/project/docx2pdf/)
 
