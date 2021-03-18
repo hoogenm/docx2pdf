@@ -12,6 +12,7 @@ except ImportError:
 
 __version__ = version(__package__)
 
+WORD_EXTENSION = '.doc'
 
 def windows(paths, keep_active):
     import win32com.client
@@ -20,7 +21,7 @@ def windows(paths, keep_active):
     wdFormatPDF = 17
 
     if paths["batch"]:
-        for docx_filepath in tqdm(sorted(Path(paths["input"]).glob("*.docx"))):
+        for docx_filepath in tqdm(sorted(Path(paths["input"]).glob("*" + WORD_EXTENSION))):
             pdf_filepath = Path(paths["output"]) / (str(docx_filepath.stem) + ".pdf")
             doc = word.Documents.Open(str(docx_filepath))
             doc.SaveAs(str(pdf_filepath), FileFormat=wdFormatPDF)
@@ -37,41 +38,6 @@ def windows(paths, keep_active):
     if not keep_active:
         word.Quit()
 
-
-def macos(paths, keep_active):
-    script = (Path(__file__).parent / "convert.jxa").resolve()
-    cmd = [
-        "/usr/bin/osascript",
-        "-l",
-        "JavaScript",
-        str(script),
-        str(paths["input"]),
-        str(paths["output"]),
-        str(keep_active).lower(),
-    ]
-
-    def run(cmd):
-        process = subprocess.Popen(cmd, stderr=subprocess.PIPE)
-        while True:
-            line = process.stderr.readline().rstrip()
-            if not line:
-                break
-            yield line.decode("utf-8")
-
-    total = len(list(Path(paths["input"]).glob("*.docx"))) if paths["batch"] else 1
-    pbar = tqdm(total=total)
-    for line in run(cmd):
-        try:
-            msg = json.loads(line)
-        except ValueError:
-            continue
-        if msg["result"] == "success":
-            pbar.update(1)
-        elif msg["result"] == "error":
-            print(msg)
-            sys.exit(1)
-
-
 def resolve_paths(input_path, output_path):
     input_path = Path(input_path).resolve()
     output_path = Path(output_path).resolve() if output_path else None
@@ -86,7 +52,7 @@ def resolve_paths(input_path, output_path):
         output["output"] = output_path
     else:
         output["batch"] = False
-        assert str(input_path).endswith(".docx")
+        assert str(input_path).endswith(WORD_EXTENSION)
         output["input"] = str(input_path)
         if output_path and output_path.is_dir():
             output_path = str(output_path / (str(input_path.stem) + ".pdf"))
@@ -100,13 +66,11 @@ def resolve_paths(input_path, output_path):
 
 def convert(input_path, output_path=None, keep_active=False):
     paths = resolve_paths(input_path, output_path)
-    if sys.platform == "darwin":
-        return macos(paths, keep_active)
-    elif sys.platform == "win32":
+    if sys.platform == "win32":
         return windows(paths, keep_active)
     else:
         raise NotImplementedError(
-            "docx2pdf is not implemented for linux as it requires Microsoft Word to be installed"
+            "this build of docx2pdf is only for Windows"
         )
 
 
